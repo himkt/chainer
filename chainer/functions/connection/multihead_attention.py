@@ -31,7 +31,7 @@ def generate_ones(device, shape, dtype):
 
 
 def multihead_attention(
-    n_head,                   # type: int
+    n_heads,                   # type: int
     embedding_size,           # type: int
     query,                    # type: InputType
     key,                      # type: InputType
@@ -68,7 +68,7 @@ def multihead_attention(
             :math:`S` is the source sequence length, :math:`B` is the
             batch size, and :math:`E` is the embedding size.
         expected_embedding_size (int): Total number of units of the model.
-        n_head (int): The number of parallel attention heads.
+        n_heads (int): The number of parallel attention heads.
         proj_in_W (:obj:`tuple`, :class:`~chainer.Variable` or :ref:`ndarray`):
             Weight(s) to project `query`, `key`, and `value` vectors.
             If the input sizes of `query`, `key`, and `value` are different,
@@ -93,7 +93,7 @@ def multihead_attention(
             The shape is :math:`(L, L)` where :math:`L` is
             the target sequence length.
         dot_product_scaler: (float): Scaler for dot product. If ``None``,
-            :math:`1 / \\sqrt{embedding_size / n_head}` is used.
+            :math:`1 / \\sqrt{embedding_size / n_heads}` is used.
         softmax_scaler (float): Softmax smoothing, or sharpening, coefficient.
             This value is for cuDNN implementation.
         return_weights (bool): If ``True``, return averaged attention weights.
@@ -144,16 +144,16 @@ def multihead_attention(
     def _in_proj_v(value):
         return _in_proj(value, start=2 * embedding_size, weight_idx=2)
 
-    if embedding_size % n_head != 0:
+    if embedding_size % n_heads != 0:
         raise ValueError(
             '`embedding_size` ({}) need to be '.format(embedding_size) +
-            'divisible by `n_head` ({})'.format(embedding_size, n_head))
+            'divisible by `n_heads` ({})'.format(embedding_size, n_heads))
     if (bias_k is None) != (bias_v is None):
         raise ValueError
     qkv_same = (query is key) and (query is value)
     kv_same = key is value
     target_length, batch_size, embedding_size = query.shape
-    head_size = embedding_size // n_head
+    head_size = embedding_size // n_heads
     if dot_product_scaler is None:
         dot_product_scaler = head_size ** -0.5
 
@@ -197,12 +197,12 @@ def multihead_attention(
                     )
                 )
             )
-    q = reshape.reshape(q, (target_length, batch_size * n_head, head_size))
+    q = reshape.reshape(q, (target_length, batch_size * n_heads, head_size))
     q = transpose.transpose(q, (1, 0, 2))
     if k is not None:
-        k = reshape.reshape(k, (-1, batch_size * n_head, head_size))
+        k = reshape.reshape(k, (-1, batch_size * n_heads, head_size))
         k = transpose.transpose(k, (1, 0, 2))
-        v = reshape.reshape(v, (-1, batch_size * n_head, head_size))
+        v = reshape.reshape(v, (-1, batch_size * n_heads, head_size))
         v = transpose.transpose(v, (1, 0, 2))
 
     # TODO(crcrpar): Investigate the possibility that
@@ -244,7 +244,7 @@ def multihead_attention(
     attn_output_weights = matmul.matmul(
         q, transpose.transpose(k, (0, 2, 1)))
     if (attn_output_weights.shape !=
-            (batch_size * n_head, target_length, source_length)):
+            (batch_size * n_heads, target_length, source_length)):
         raise ValueError('`attn_output_weights` is shaped wrongly')
 
     if attn_mask is not None:
@@ -254,7 +254,7 @@ def multihead_attention(
     if key_padding_mask is not None:
         attn_output_weights = reshape.reshape(
             attn_output_weights,
-            (batch_size, n_head, target_length, source_length)
+            (batch_size, n_heads, target_length, source_length)
         )
         expanded_mask = expand_dims.expand_dims(
             expand_dims.expand_dims(key_padding_mask, 1), 2)
@@ -266,7 +266,7 @@ def multihead_attention(
         )
         attn_output_weights = reshape.reshape(
             attn_output_weights,
-            (batch_size * n_head, target_length, source_length)
+            (batch_size * n_heads, target_length, source_length)
         )
 
     attn_output_weights = softmax.softmax(attn_output_weights, axis=-1)
@@ -290,7 +290,7 @@ def multihead_attention(
     if return_weights:
         attn_output_weights = reshape.reshape(
             attn_output_weights,
-            (batch_size, n_head, target_length, source_length)
+            (batch_size, n_heads, target_length, source_length)
         )
         attn_output_weights = average.average(attn_output_weights, axis=1)
     else:
