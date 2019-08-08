@@ -1,13 +1,12 @@
 import typing as tp
 
-
+import chainer
 from chainer import functions
 from chainer import initializers
 from chainer import link
 from chainer import links
 from chainer import types
 from chainer import variable
-
 
 InputType = tp.Union[variable.Variable, types.NdArray]
 
