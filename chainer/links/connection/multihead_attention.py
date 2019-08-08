@@ -17,7 +17,7 @@ class MultiHeadAttention(link.Chain):
     """Multi-Head Attention.
 
     Args:
-        n_head (int): The number of heads.
+        n_heads (int): The number of heads.
         embedding_size (int):
             The size of input query vectors
             and projected query, key, and value vectors.
@@ -31,7 +31,7 @@ class MultiHeadAttention(link.Chain):
         post_dropout (float):
             The dropout ratio applied to attention after softmax.
         scaler (float): The scaler value that defaults to
-            :math:`1/\\sqrt{n_{head}}`.
+            :math:`1/\\sqrt{n_{heads}}`.
         softmax_scaler (float): Softmax smoothing, or sharpening, coefficient.
             The default value is 1.0.
         initialW (:ref:`initializer <initializer>`): Initializer to initialize
@@ -50,7 +50,7 @@ class MultiHeadAttention(link.Chain):
 
     def __init__(
         self,
-        n_head,                 # type: int
+        n_heads,                 # type: int
         embedding_size,         # type: int
         self_attention=False,   # type: bool
         ksize=None,             # type: tp.Optional[int]
@@ -67,10 +67,10 @@ class MultiHeadAttention(link.Chain):
         # type (...) -> None
         super().__init__()
 
-        if embedding_size % n_head != 0:
+        if embedding_size % n_heads != 0:
             raise ValueError(
                 '`embedding_size` ({}) must be '.format(embedding_size) +
-                'divisible by `n_head` ({})'.format(n_head))
+                'divisible by `n_heads` ({})'.format(n_heads))
         if not self_attention and (ksize is None or vsize is None):
             raise ValueError(
                 '`ksize` and `vsize` are required '
@@ -78,9 +78,9 @@ class MultiHeadAttention(link.Chain):
         else:
             ksize = embedding_size
             vsize = embedding_size
-        self.n_head = n_head
+        self.n_heads = n_heads
         self.embedding_size = embedding_size  # == qsize
-        self.head_size = self.embedding_size // self.n_head
+        self.head_size = self.embedding_size // self.n_heads
         self._self_attention = self_attention
         self.scaler = scaler
         self.softmax_scaler = softmax_scaler
@@ -206,7 +206,7 @@ class MultiHeadAttention(link.Chain):
                 self.proj_q_weight, self.proj_k_weight, self.proj_v_weight)
 
         attention, attention_weights = functions.multihead_attention(
-            self.n_head, self.embedding_size, query, key, value,
+            self.n_heads, self.embedding_size, query, key, value,
             proj_in_W, self.proj_in_b, self.bias_k, self.bias_v,
             self.proj_out_W, self.proj_out_b,
             add_zero_attention, self.attention_dropout, self.post_dropout,
